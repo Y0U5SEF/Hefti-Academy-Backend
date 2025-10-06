@@ -15,70 +15,70 @@ const { adminRouter } = require('./routes/admin')
 const PORT = process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 4000
 const ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000'
 
-async function main() {
-  initDb()
+// Initialize the database
+initDb()
 
-  const app = express()
-  app.use(express.json({ limit: '2mb' }))
-  app.use(cookieParser())
-  app.use(
-    cors({
-      origin: ORIGIN,
-      credentials: true,
-    })
-  )
-
-  // Static uploads
-  const uploadsDir = path.join(__dirname, 'data', 'uploads')
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-  app.use('/uploads', express.static(uploadsDir))
-
-  app.get('/api/health', (req, res) => {
-    res.json({ ok: true, ts: new Date().toISOString() })
+const app = express()
+app.use(express.json({ limit: '2mb' }))
+app.use(cookieParser())
+app.use(
+  cors({
+    origin: ORIGIN,
+    credentials: true,
   })
+)
 
-  app.use('/api/auth', authRouter)
-  app.use('/api/members', membersRouter)
-  // Friendlier public member card path (optional)
-  if ((process.env.ENABLE_PUBLIC_MEMBER_CARD || 'false').toLowerCase() === 'true') {
-    app.get('/m/:academyId', (req, res) => {
-      res.redirect(302, `/api/members/card/${encodeURIComponent(req.params.academyId)}`)
-    })
+// Static uploads
+const uploadsDir = path.join(__dirname, 'data', 'uploads')
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+app.use('/uploads', express.static(uploadsDir))
+
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() })
+})
+
+app.use('/api/auth', authRouter)
+app.use('/api/members', membersRouter)
+// Friendlier public member card path (optional)
+if ((process.env.ENABLE_PUBLIC_MEMBER_CARD || 'false').toLowerCase() === 'true') {
+  app.get('/m/:academyId', (req, res) => {
+    res.redirect(302, `/api/members/card/${encodeURIComponent(req.params.academyId)}`)
+  })
+}
+app.use('/api/payments', paymentsRouter)
+app.use('/api/admin', adminRouter)
+app.post('/api/files/upload-base64', (req, res) => {
+  try {
+    const { dataUrl, filenameHint } = req.body || {}
+    if (!dataUrl || typeof dataUrl !== 'string') return res.status(400).json({ error: 'dataUrl required' })
+    const m = dataUrl.match(/^data:(.+);base64,(.+)$/)
+    if (!m) return res.status(400).json({ error: 'Invalid dataUrl' })
+    const mime = m[1]
+    const buf = Buffer.from(m[2], 'base64')
+    const ext = mime === 'image/png' ? 'png' : 'jpg'
+    const safeName = (filenameHint || 'image').replace(/[^a-zA-Z0-9-_]/g, '')
+    const ts = Date.now()
+    const name = `${safeName}-${ts}.${ext}`
+    const filePath = path.join(uploadsDir, name)
+    fs.writeFileSync(filePath, buf)
+    res.json({ url: `/uploads/${name}` })
+  } catch (e) {
+    console.error('upload-base64 error', e)
+    res.status(500).json({ error: 'Upload failed' })
   }
-  app.use('/api/payments', paymentsRouter)
-  app.use('/api/admin', adminRouter)
-  app.post('/api/files/upload-base64', (req, res) => {
-    try {
-      const { dataUrl, filenameHint } = req.body || {}
-      if (!dataUrl || typeof dataUrl !== 'string') return res.status(400).json({ error: 'dataUrl required' })
-      const m = dataUrl.match(/^data:(.+);base64,(.+)$/)
-      if (!m) return res.status(400).json({ error: 'Invalid dataUrl' })
-      const mime = m[1]
-      const buf = Buffer.from(m[2], 'base64')
-      const ext = mime === 'image/png' ? 'png' : 'jpg'
-      const safeName = (filenameHint || 'image').replace(/[^a-zA-Z0-9-_]/g, '')
-      const ts = Date.now()
-      const name = `${safeName}-${ts}.${ext}`
-      const filePath = path.join(uploadsDir, name)
-      fs.writeFileSync(filePath, buf)
-      res.json({ url: `/uploads/${name}` })
-    } catch (e) {
-      console.error('upload-base64 error', e)
-      res.status(500).json({ error: 'Upload failed' })
-    }
-  })
+})
 
-  app.use((err, req, res, next) => {
-    console.error('Error:', err)
-    res.status(err.status || 500).json({ error: err.message || 'Server error' })
-  })
+app.use((err, req, res, next) => {
+  console.error('Error:', err)
+  res.status(err.status || 500).json({ error: err.message || 'Server error' })
+})
 
+// For local development
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`)
   })
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+// Export the app for Vercel
+module.exports = app
