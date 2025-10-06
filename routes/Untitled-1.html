@@ -1,0 +1,248 @@
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page { size: A4; margin: 0; }
+    body { font-family: ${effraReg ? '"Effra", Arial, sans-serif' : 'Arial, sans-serif'}; }
+    ${effraReg ? `
+    @font-face { font-family: 'Effra'; src: url(${effraReg}) format('opentype'); font-weight: 400; font-style: normal; }
+    @font-face { font-family: 'Effra'; src: url(${effraBold}) format('opentype'); font-weight: 700; font-style: normal; }
+    `: ''}
+    .frame { top: 5mm; right: 5mm; bottom: 5mm; left: 5mm; border: 2pt solid #3A4090; padding: 3mm; box-sizing: border-box; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .photo { width: 120px; height: auto; object-fit: contain; background: #eee; }
+    .logo { width: 90px; height: 90px; object-fit: contain; }
+    .inst-ar { font-size: 18px; font-weight: bold; color: #3A4090; direction: rtl; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif; }
+    .inst-en { font-size: 12px; font-weight: bold; color: #3A4090; font-family: 'Effra', Arial, sans-serif; }
+    .title { text-align: center; margin: 12px 0 8px; font-size: 24pt; color: #3A4090; font-weight: 700; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif; }
+    .grid { margin-top: 6px; }
+    .row { display: flex; align-items: flex-end; gap: 12px; margin-top: 6px; }
+    .label-en { width: 160px; font-size: 12pt; }
+    .mid { flex: 1; border-bottom: 0.5pt solid #C8C8C8; padding-bottom: 2px; text-align: center; font-weight: 700; }
+    .label-ar { width: 160px; font-size: 12pt; text-align: right; direction: rtl; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif; }
+    .half { flex: 1; display: flex; flex-direction: row; align-items: flex-end; justify-content: flex-start; }
+    .halfAr { direction: rtl; }
+    .uline { width:100%; border-bottom: 0.5pt solid #C8C8C8; padding-bottom: 2px; margin-top: 2px; font-weight: bold }
+    .val-ar { direction: rtl; text-align: right; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif; }
+    .para { direction: rtl; text-align: right; font-size: 12pt; margin-top: 4px; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif; }
+    .styled-hr {
+    border: none;
+    height: 2px;
+    background-color: #3a4090;
+    margin: 20px 0 0 0;
+    }
+    :root {
+    --footer-bg: #ffffff;
+    --footer-fg: #222;
+    --footer-muted: #000000; /* gray-500 */
+    --footer-accent: #3a4090; /* sky-500 */
+    --footer-border: #e5e7eb; /* gray-200 */
+  }
+
+  .doc-footer {
+    color: var(--footer-fg);
+    background: var(--footer-bg);
+  }
+
+  .footer-inner {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 18px;
+    align-items: center;
+    max-width: 900px;
+    margin: 0 auto;
+    justify-items: center;
+  }
+
+  .footer-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--footer-fg);
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .footer-item .icon {
+    display: inline-grid;
+    place-items: center;
+    color: var(--footer-accent);
+  }
+
+  .footer-item .label {
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--footer-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+
+
+  .signature {
+display:flex;
+flex-direction:column;
+align-items:center;
+font-size:10pt;
+font-weight:bold;
+width:200px;
+position:relative;
+gap:5px;
+}
+
+.signature small {
+font-size:7pt;
+font-weight:normal;
+}
+
+.signature .box {
+border:1px solid #dddddd;
+height:55px;
+width:200px;
+}
+  </style>
+</head>
+<body>
+  <div style="width: 60%; margin: 0 auto;" class="frame">
+    <div class="header">
+      <img class="photo" src="images/member-photo.jpg" />
+      <div style="text-align:right">
+        <img class="logo" src="images/logo.png" />
+        <div class="AcademyName">
+            <div class="inst-ar">أكاديمية هفتي لكرة القدم</div>
+            <div class="inst-en">Hefti Academy</div>
+        </div>
+      </div>
+    </div>
+
+    
+
+
+    <div class="title">بطاقة المنخرط</div>
+
+    <div class="grid">
+      <div class="row">
+        <div class="half">
+          <div class="label-en">First name</div>
+          <div class="uline">YOUSSEF</div>
+        </div>
+        <div class="half halfAr">
+          <div class="label-ar">الاسم الشخصي</div>
+          <div class="uline val-ar">يوسف</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="half">
+          <div class="label-en">Last name</div>
+          <div class="uline">EL ABASSI</div>
+        </div>
+        <div class="half halfAr">
+          <div class="label-ar">الاسم العائلي</div>
+          <div class="uline val-ar">العباسي</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label-en">Date of birth</div>
+        <div class="mid">15/03/2010</div>
+        <div class="label-ar">تاريخ الازدياد</div>
+      </div>
+      <div class="row">
+        <div class="label-en">Age</div>
+        <div class="mid">13 years</div>
+        <div class="label-ar">العمر</div>
+      </div>
+      <div class="row">
+        <div class="label-en">Place of birth</div>
+        <div class="mid">Casablanca</div>
+        <div class="label-ar">مكان الازدياد</div>
+      </div>
+      <div class="row">
+        <div class="label-en">ID Number</div>
+        <div class="mid">ID12345678</div>
+        <div class="label-ar">رقم التعريف</div>
+      </div>
+      <div class="row">
+        <div class="label-en">Height</div>
+        <div class="mid">155 cm</div>
+        <div class="label-ar">الطول</div>
+      </div>
+      <div class="row">
+        <div class="label-en">Weight</div>
+        <div class="mid">45 kg</div>
+        <div class="label-ar">الوزن</div>
+      </div>
+      <div class="row">
+        <div class="label-en">Parent phone number</div>
+        <div class="mid">+212 6 12 34 56 78</div>
+        <div class="label-ar">هاتف الولي</div>
+      </div>
+      <div class="row">
+        <div class="label-en">Address</div>
+        <div class="mid">123 Main Street, Casablanca</div>
+        <div class="label-ar">العنوان</div>
+      </div>
+    </div>
+
+    <hr class="styled-hr">
+
+    <div class="title">التزام ولي الأم</div>
+    <p class="para">أنا الموقّع أسفله السيد محمد العباسي الحامل لبطاقة التعريف الوطنية رقم CN123456 المزداد بتاريخ 10/05/1985 والساكن بـ مركز أكدز زاكورة</p>
+    <p class="para">بصفتي والد أمر المنخرط يوسف العباسي المزداد بتاريخ 15/03/2010</p>
+    <p class="para">أُقرّ وألتزم بموجب هذا التصريح بما يلي:</p>
+    <p class="para">أوافق على انخراط ابني/ابنتي في أكاديمية هفتي لكرة القدم وأتحمل كامل المسؤولية عن مشاركته/ها في أنشطة الأكاديمية.</p>
+    <p class="para">اطّلعت على القانون الداخلي للأكاديمية وأتعهد باحترام جميع بنوده والالتزام بها دون استثناء.</p>
+    <p class="para">أُدرك أن أي سلوك عنيف أو تصرّف غير أخلاقي أو مسيء لسمعة الأكاديمية يُعرّض المنخرط للإيقاف المؤقت أو الطرد النهائي.</p>
+    <p class="para">أُصرّح أن ابني/ابنتي يتمتّع/تتمتّع بصحّة جيّدة تخوّله/ها المشاركة في الأنشطة الرياضية.</p>
+    <p class="para">أوافق على أن مسؤولية الأكاديمية تقتصر على التأمين الصحي في حدود ما هو منصوص عليه في عقد التأمين، وألتزم بعدم تحميل الأكاديمية أي تبعات قانونية أو مالية في حال وقوع حادث ناتج عن مخالفة التعليمات أو القواعد المعمول بها من طرف الطاقم التقني أو الإداري.</p>
+    <p class="para">أوافق على استعمال صور أو مقاطع فيديو تخصّ المنخرط في الأنشطة الرسمية أو الترويجية للأكاديمية.</p>
+    <p class="para">أحتفظ بحق سحب هذا الإذن كتابيًا في أي وقت لاحق متى رغبت في ذلك.</p>
+    <div class="doc_footer">
+      <p class="para">حرر بأكدز، في: 05/10/2025</p>
+      <div class="signature">
+        <div>الإمضاء</div>
+        <small>يوسف العباسي</small>
+        <div class="box"></div>
+      </div>
+    </div>
+  </div>
+   
+  <footer class="doc-footer" dir="ltr">
+  <div class="footer-inner">
+    <a class="footer-item" href="https://heftiacademy.com" target="_blank" rel="noopener">
+      <span class="icon" aria-hidden="true">
+        <!-- globe -->
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"></path>
+        </svg>
+      </span>
+      <span class="label">heftiacademy.com</span>
+    </a>
+
+    <a class="footer-item" href="tel:+2126666871517">
+      <span class="icon" aria-hidden="true">
+        <!-- phone -->
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 16.92v2a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 5.18 2 2 0 0 1 4.11 3h2a2 2 0 0 1 2 1.72c.12.89.32 1.75.6 2.58a2 2 0 0 1-.45 2.11L7.6 10.1a16 16 0 0 0 6.3 6.3l.69-.66a2 2 0 0 1 2.11-.45c.83.28 1.69.48 2.58.6A2 2 0 0 1 22 16.92z"/>
+        </svg>
+      </span>
+      <span class="label">06 66 87 15 17 · 06 61 77 25 80</span>
+    </a>
+
+    <a class="footer-item" href="mailto:contact@heftiacademy.com">
+      <span class="icon" aria-hidden="true">
+        <!-- mail -->
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+          <path d="m22 6-10 7L2 6"/>
+        </svg>
+      </span>
+      <span class="label">contact@heftiacademy.com</span>
+    </a>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${row.academy_id || ''} – Member Card</title>
+  <style>
+    @page { size: A4; margin: 0 }
+    ${effraReg ? `@font-face { font-family: 'Effra'; src: url(${effraReg}) format('opentype'); font-weight: 400; font-style: normal; }` : ''}
+    ${effraBold ? `@font-face { font-family: 'Effra'; src: url(${effraBold}) format('opentype'); font-weight: 700; font-style: normal; }` : ''}
+    body { margin: 0; font-family: ${effraReg ? 'Effra, Arial, sans-serif' : 'Arial, sans-serif'} }
+    .frame { position: fixed; top: 5mm; right: 5mm; bottom: 5mm; left: 5mm; border: 2pt solid #3A4090; box-sizing: border-box; padding: 10mm; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .logo { width: 90px; height: 90px; object-fit: contain }
+    .photo { width: 100px; height: auto; max-height: 140px; object-fit: contain; border-radius: 6px; background: #eee }
+    .inst { text-align: right }
+    .inst-ar { font-size: 16px; color: #3A4090; direction: rtl; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif }
+    .inst-en { font-size: 12px; color: #3A4090 }
+    .title { text-align: center; margin: 10px 0 6px; font-size: 20px; color: #3A4090; font-weight: 700; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif }
+    .grid { margin-top: 8px }
+    .row { display: flex; align-items: flex-end; gap: 12px; margin-top: 6px }
+    .label-en { width: 140px; font-size: 12px }
+    .mid { flex: 1; border-bottom: 0.5pt solid #C8C8C8; padding-bottom: 2px; text-align: center; font-weight: 700 }
+    .label-ar { width: 180px; font-size: 12px; text-align: right; direction: rtl; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif }
+    .half { flex: 1 }
+    .uline { border-bottom: 0.5pt solid #C8C8C8; padding-bottom: 2px; margin-top: 2px }
+    .val-ar { direction: rtl; text-align: right; font-family: 'Effra','Noto Naskh Arabic','Segoe UI', Arial, sans-serif }
+    .id { text-align: center; margin-top: 8px; font-weight: 700; color: #3A4090 }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="header">
+      ${photoSrc ? `<img class="photo" src="${photoSrc}" />` : `<div class="photo"></div>`}
+      <div class="inst">
+        ${logoSrc ? `<img class="logo" src="${logoSrc}" />` : ''}
+        <div class="inst-ar">${process.env.INST_NAME_AR || 'أكاديمية هفتي لكرة القدم'}</div>
+        <div class="inst-en">${process.env.INST_NAME_EN || 'Hefti Academy'}</div>
+      </div>
+    </div>
+
+    <div class="title">ورقة التسجيل</div>
+    <div class="id">${row.academy_id || ''}</div>
+
+    <div class="grid">
+      <div class="row">
+        <div class="half">
+          <div class="label-en">First name</div>
+          <div class="uline">${firstLat}</div>
+        </div>
+        <div class="half">
+          <div class="label-ar">الاسم الشخصي</div>
+          <div class="uline val-ar">${firstAr || '—'}</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="half">
+          <div class="label-en">Last name</div>
+          <div class="uline">${lastLat}</div>
+        </div>
+        <div class="half">
+          <div class="label-ar">الاسم العائلي</div>
+          <div class="uline val-ar">${lastAr || '—'}</div>
+        </div>
+      </div>
+
+      ${[
+        { en:'Date of birth', val: row.date_of_birth || '—', ar:'تاريخ الازدياد' },
+        { en:'Age', val: (age ?? '—'), ar:'العمر' },
+        { en:'Category', val: (ageCategory ?? '—'), ar:'الفئة' },
+      ].map(r => `
+        <div class="row">
+          <div class="label-en">${r.en}</div>
+          <div class="mid">${r.val}</div>
+          <div class="label-ar">${r.ar}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+</body>
+</html>
