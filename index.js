@@ -53,6 +53,58 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir))
 
+// Add a root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Hefti Academy API Server', 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    documentation: 'API documentation will be available at /api/docs (coming soon)',
+    health: '/api/health',
+    version: '1.0.0'
+  })
+})
+
+// Add API documentation route
+app.get('/api/docs', (req, res) => {
+  res.json({ 
+    message: 'Hefti Academy API Documentation',
+    endpoints: {
+      auth: {
+        login: 'POST /api/auth/login',
+        logout: 'POST /api/auth/logout',
+        me: 'GET /api/auth/me'
+      },
+      members: {
+        getAll: 'GET /api/members',
+        getById: 'GET /api/members/:id',
+        create: 'POST /api/members',
+        update: 'PUT /api/members/:id',
+        delete: 'DELETE /api/members/:id',
+        getCard: 'GET /api/members/card/:academyId',
+        getPdf: 'GET /api/members/:id/pdf'
+      },
+      payments: {
+        getMonthly: 'GET /api/payments/monthly',
+        updateMonthly: 'PATCH /api/payments/monthly',
+        getRegistration: 'GET /api/payments/registration/:memberId',
+        updateRegistration: 'PATCH /api/payments/registration/:memberId',
+        getStats: 'GET /api/payments/stats'
+      },
+      admin: {
+        profile: 'GET /api/admin/profile',
+        changePassword: 'POST /api/admin/change-password'
+      },
+      test: {
+        dbTest: 'GET /api/test/db-test'
+      },
+      health: 'GET /api/health',
+      env: 'GET /api/env'
+    },
+    timestamp: new Date().toISOString()
+  })
+})
+
 app.get('/api/health', (req, res) => {
   try {
     res.json({ 

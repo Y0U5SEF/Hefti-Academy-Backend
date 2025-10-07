@@ -35,6 +35,10 @@ This document summarizes all the changes made to make the Hefti Academy server c
 - Kept only the necessary `builds` property
 - Removed environment variable references (should be set in Vercel dashboard)
 
+### 5. Root Route Handling
+- Added root route (`/`) to provide API information
+- Added API documentation route (`/api/docs`) to list available endpoints
+
 ## Route Updates
 
 ### 1. Auth Route ([routes/auth.js](file://c:\hefti-academy\server\routes\auth.js))
@@ -75,7 +79,11 @@ This document summarizes all the changes made to make the Hefti Academy server c
 - Added `/api/env` endpoint for environment variable inspection
 - Added better error handling
 
-### 3. Vercel Compatibility
+### 3. Root and Documentation Routes
+- Added root route (`/`) to provide API information
+- Added API documentation route (`/api/docs`) to list available endpoints
+
+### 4. Vercel Compatibility
 - Added Vercel environment detection
 - Updated file upload paths for Vercel compatibility
 
@@ -138,3 +146,9 @@ Fixed the error "Environment Variable "DATABASE_URL" references Secret "database
 - Removing environment variable references from vercel.json
 - Environment variables should now be set directly in the Vercel dashboard
 - This is the recommended approach for managing secrets in Vercel
+
+### Root Route Issue
+Fixed the "Cannot GET /" error by:
+- Adding a root route (`/`) to provide API information
+- Adding an API documentation route (`/api/docs`) to list available endpoints
+- This provides a better user experience when accessing the API directly

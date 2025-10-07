@@ -28,6 +28,16 @@ This document provides instructions for deploying the Hefti Academy server to Ve
    - Set the build command to `npm install` (if needed)
    - Set the output directory to ` ` (empty)
 
+## Available Endpoints
+
+After deployment, your API will be available at the following endpoints:
+
+- **Root**: `GET /` - API information
+- **API Docs**: `GET /api/docs` - List of available endpoints
+- **Health Check**: `GET /api/health` - Health status
+- **Environment Info**: `GET /api/env` - Environment variables info
+- **Database Test**: `GET /api/test/db-test` - Database connection test
+
 ## Important Notes
 
 1. **Database**: The application now uses PostgreSQL instead of SQLite for better compatibility with Vercel.
@@ -35,8 +45,6 @@ This document provides instructions for deploying the Hefti Academy server to Ve
 2. **File Uploads**: Uploaded files will be stored in `/tmp/uploads` directory in Vercel deployments.
 
 3. **PDF Generation**: PDF generation is disabled in Vercel environments due to Puppeteer limitations.
-
-4. **Health Checks**: You can check the health of your deployment at `/api/health`.
 
 ## Troubleshooting
 
