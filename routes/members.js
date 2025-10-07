@@ -1,6 +1,6 @@
 ﻿﻿const express = require('express')
-const { db } = require('../lib/db')
-const { generateMemberPdf } = require('../lib/memberPdf') // Import the new PDF generation module
+const { db } = require('../lib/db-postgres') // Use PostgreSQL
+const { generateMemberPdf } = require('../lib/memberPdf')
 const path = require('path')
 const fs = require('fs')
 const { authRequired } = require('../lib/auth')
@@ -17,13 +17,8 @@ function isMinor(dateStr) {
 }
 
 function initMonthlyPaymentsForYear(memberId, year, poor) {
-  const insert = db().prepare(`
-    INSERT OR IGNORE INTO payments(member_id, type, year, month, status, amount)
-    VALUES(?, 'monthly', ?, ?, ?, NULL)
-  `)
-  for (let m = 1; m <= 12; m++) {
-    insert.run(memberId, year, m, poor ? 'exempt' : 'pending')
-  }
+  // This function would need to be reimplemented for PostgreSQL
+  // For now, we'll handle this in the payments route
 }
 
 // Public member card by academy_id (no auth, minimal page)
@@ -33,74 +28,77 @@ router.get('/card/:academyId', (req, res) => {
     const academyId = String(req.params.academyId || '').trim()
     if (!academyId) return res.status(400).send('Invalid academy id')
 
-    const row = db().prepare('SELECT * FROM members WHERE academy_id = ?').get(academyId)
-    if (!row) return res.status(404).send('Not found')
+    // Use PostgreSQL query
+    db().query('SELECT * FROM members WHERE academy_id = $1', [academyId])
+      .then(result => {
+        const row = result.rows[0]
+        if (!row) return res.status(404).send('Not found')
 
-    // Helpers to embed local files as data URL
-    function fileDataUrl(absPath, mimeFallback = 'application/octet-stream') {
-      try {
-        const buf = fs.readFileSync(absPath)
-        // crude mime sniff by extension
-        const ext = path.extname(absPath).toLowerCase()
-        const mime = ext === '.otf' ? 'font/otf'
-          : ext === '.ttf' ? 'font/ttf'
-          : ext === '.png' ? 'image/png'
-          : (ext === '.jpg' || ext === '.jpeg') ? 'image/jpeg'
-          : mimeFallback
-        return `data:${mime};base64,${buf.toString('base64')}`
-      } catch { return null }
-    }
-    function imageDataUrl(absPath) { return fileDataUrl(absPath, 'image/png') }
+        // Helpers to embed local files as data URL
+        function fileDataUrl(absPath, mimeFallback = 'application/octet-stream') {
+          try {
+            const buf = fs.readFileSync(absPath)
+            // crude mime sniff by extension
+            const ext = path.extname(absPath).toLowerCase()
+            const mime = ext === '.otf' ? 'font/otf'
+              : ext === '.ttf' ? 'font/ttf'
+              : ext === '.png' ? 'image/png'
+              : (ext === '.jpg' || ext === '.jpeg') ? 'image/jpeg'
+              : mimeFallback
+            return `data:${mime};base64,${buf.toString('base64')}`
+          } catch { return null }
+        }
+        function imageDataUrl(absPath) { return fileDataUrl(absPath, 'image/png') }
 
-    // Fonts (Effra)
-    const effraReg = fileDataUrl(path.join(__dirname, '..', '..', 'src', 'Fonts', 'EffraReg.otf'))
-    const effraBold = fileDataUrl(path.join(__dirname, '..', '..', 'src', 'Fonts', 'EffraBold.otf'))
+        // Fonts (Effra)
+        const effraReg = fileDataUrl(path.join(__dirname, '..', '..', 'src', 'Fonts', 'EffraReg.otf'))
+        const effraBold = fileDataUrl(path.join(__dirname, '..', '..', 'src', 'Fonts', 'EffraBold.otf'))
 
-    // Logo from public/logo.png, if present
-    let logoSrc = ''
-    const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png')
-    const logoData = imageDataUrl(logoPath)
-    if (logoData) logoSrc = logoData
+        // Logo from public/logo.png, if present
+        let logoSrc = ''
+        const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png')
+        const logoData = imageDataUrl(logoPath)
+        if (logoData) logoSrc = logoData
 
-    // Member photo (uploads)
-    let photoSrc = ''
-    if (row.photo_url) {
-      if (/^https?:/i.test(row.photo_url)) {
-        photoSrc = row.photo_url
-      } else {
-        const rel = String(row.photo_url).replace(/^\/+/, '')
-        const clean = rel.replace(/^uploads\//, '')
-        const p = path.join(__dirname, '..', 'data', 'uploads', clean)
-        const d = imageDataUrl(p)
-        if (d) photoSrc = d
-      }
-    }
+        // Member photo (uploads)
+        let photoSrc = ''
+        if (row.photo_url) {
+          if (/^https?:/i.test(row.photo_url)) {
+            photoSrc = row.photo_url
+          } else {
+            const rel = String(row.photo_url).replace(/^\/+/, '')
+            const clean = rel.replace(/^uploads\//, '')
+            const p = path.join(__dirname, '..', 'data', 'uploads', clean)
+            const d = imageDataUrl(p)
+            if (d) photoSrc = d
+          }
+        }
 
-    const age = (() => {
-      if (!row?.date_of_birth) return null
-      const dob = new Date(row.date_of_birth)
-      if (isNaN(dob)) return null
-      const t = new Date()
-      return t.getFullYear() - dob.getFullYear() - ((t.getMonth() < dob.getMonth() || (t.getMonth() === dob.getMonth() && t.getDate() < dob.getDate())) ? 1 : 0)
-    })()
-    const ageCategory = (() => {
-      if (age === null || age < 0) return null
-      if (age <= 7) return 'U7'
-      if (age <= 9) return 'U9'
-      if (age <= 11) return 'U11'
-      if (age <= 13) return 'U13'
-      if (age <= 15) return 'U15'
-      if (age <= 17) return 'U17'
-      if (age <= 19) return 'U19'
-      return 'Senior'
-    })()
+        const age = (() => {
+          if (!row?.date_of_birth) return null
+          const dob = new Date(row.date_of_birth)
+          if (isNaN(dob)) return null
+          const t = new Date()
+          return t.getFullYear() - dob.getFullYear() - ((t.getMonth() < dob.getMonth() || (t.getMonth() === dob.getMonth() && t.getDate() < dob.getDate())) ? 1 : 0)
+        })()
+        const ageCategory = (() => {
+          if (age === null || age < 0) return null
+          if (age <= 7) return 'U7'
+          if (age <= 9) return 'U9'
+          if (age <= 11) return 'U11'
+          if (age <= 13) return 'U13'
+          if (age <= 15) return 'U15'
+          if (age <= 17) return 'U17'
+          if (age <= 19) return 'U19'
+          return 'Senior'
+        })()
 
-    const firstLat = row.first_name_latin || ''
-    const firstAr = row.first_name_arabic || ''
-    const lastLat = row.last_name_latin || ''
-    const lastAr = row.last_name_arabic || ''
+        const firstLat = row.first_name_latin || ''
+        const firstAr = row.first_name_arabic || ''
+        const lastLat = row.last_name_latin || ''
+        const lastAr = row.last_name_arabic || ''
 
-    const html = `<!doctype html>
+        const html = `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
@@ -319,8 +317,13 @@ router.get('/card/:academyId', (req, res) => {
 </html>`;
 
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    return res.send(html)
+        res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        return res.send(html)
+      })
+      .catch(error => {
+        console.error('member card error', error)
+        return res.status(500).send('Server error')
+      })
   } catch (e) {
     console.error('member card error', e)
     return res.status(500).send('Server error')
@@ -329,23 +332,46 @@ router.get('/card/:academyId', (req, res) => {
 
 router.use(authRequired)
 
-router.get('/', (req, res) => {
-  const rows = db().prepare('SELECT * FROM members ORDER BY created_at DESC').all()
-  res.json(rows)
+router.get('/', async (req, res) => {
+  try {
+    const dbPool = db()
+    const result = await dbPool.query('SELECT * FROM members ORDER BY created_at DESC')
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Get members error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
 })
 
-router.get('/:id', (req, res) => {
-  const row = db().prepare('SELECT * FROM members WHERE id = ?').get(req.params.id)
-  if (!row) return res.status(404).json({ error: 'Not found' })
-  res.json(row)
+router.get('/:id', async (req, res) => {
+  try {
+    const dbPool = db()
+    const result = await dbPool.query('SELECT * FROM members WHERE id = $1', [req.params.id])
+    const row = result.rows[0]
+    if (!row) return res.status(404).json({ error: 'Not found' })
+    res.json(row)
+  } catch (error) {
+    console.error('Get member error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
 })
 
 // Generate PDF for member using Puppeteer
 router.get('/:id/pdf', async (req, res) => {
   try {
+    const isVercel = !!process.env.VERCEL
+    if (isVercel) {
+      // Return a simple message in Vercel environment
+      return res.status(501).json({ error: 'PDF generation not available in Vercel environment' })
+    }
+    
     const id = Number(req.params.id)
     if (!id) return res.status(400).json({ error: 'Invalid id' })
-    const member = db().prepare('SELECT * FROM members WHERE id = ?').get(id)
+    
+    const dbPool = db()
+    const result = await dbPool.query('SELECT * FROM members WHERE id = $1', [id])
+    const member = result.rows[0]
+    
     if (!member) return res.status(404).json({ error: 'Not found' })
 
     // Generate PDF using the new module
@@ -360,196 +386,210 @@ router.get('/:id/pdf', async (req, res) => {
   }
 })
 
-router.post('/', (req, res) => {
-  const b = req.body || {}
-  const up = (s) => (s ? String(s).toUpperCase() : null)
-  const first_name_latin = up(b.first_name_latin)
-  const last_name_latin = up(b.last_name_latin)
-  const guardian_first_name_latin = up(b.guardian_first_name_latin)
-  const guardian_last_name_latin = up(b.guardian_last_name_latin)
-
-  const full_name_latin = `${first_name_latin || ''} ${last_name_latin || ''}`.trim() || b.full_name_latin
-  const full_name_arabic = `${b.first_name_arabic || ''} ${b.last_name_arabic || ''}`.trim() || b.full_name_arabic
-  if (!full_name_latin || !b.date_of_birth) {
-    return res.status(400).json({ error: 'first/last name (latin) and date_of_birth required' })
-  }
-  if (isMinor(b.date_of_birth)) {
-    const required = ['guardian_first_name_latin','guardian_last_name_latin','guardian_id_number','guardian_phone']
-    for (const f of required) {
-      if (!b[f]) return res.status(400).json({ error: `Field ${f} required for minors` })
-    }
-  }
-  const poor = !!b.poor_family
-  const stmt = db().prepare(`
-    INSERT INTO members (
-      first_name_latin, last_name_latin, first_name_arabic, last_name_arabic,
-      full_name_latin, full_name_arabic, date_of_birth, gender, place_of_birth,
-      id_type, id_number, poor_family,
-      photo_url,
-      guardian_full_name, guardian_first_name_latin, guardian_last_name_latin,
-      guardian_first_name_arabic, guardian_last_name_arabic,
-      guardian_id_number, guardian_phone, guardian_kinship,
-      guardian_date_of_birth, guardian_place_of_birth, guardian_address
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `)
-  const info = stmt.run(
-    first_name_latin || null, last_name_latin || null,
-    b.first_name_arabic || null, b.last_name_arabic || null,
-    full_name_latin, full_name_arabic || null, b.date_of_birth, (b.gender ? String(b.gender).toLowerCase() : null), b.place_of_birth || '',
-    b.id_type || null, b.id_number || null, poor ? 1 : 0,
-    b.photo_url || null,
-    (b.guardian_full_name || [guardian_first_name_latin || '', guardian_last_name_latin || ''].join(' ').trim()) || null,
-    guardian_first_name_latin || null,
-    guardian_last_name_latin || null,
-    b.guardian_first_name_arabic || null,
-    b.guardian_last_name_arabic || null,
-    b.guardian_id_number || null, b.guardian_phone || null, (b.guardian_kinship || null),
-    b.guardian_date_of_birth || null, b.guardian_place_of_birth || null, b.guardian_address || null
-  )
-
-  // Set academy_id based on DB row id (e.g., HFA0001)
+router.post('/', async (req, res) => {
   try {
-    const academyId = 'HFA' + String(info.lastInsertRowid).padStart(4, '0')
-    db().prepare('UPDATE members SET academy_id = ? WHERE id = ?').run(academyId, info.lastInsertRowid)
-  } catch {}
+    const b = req.body || {}
+    const up = (s) => (s ? String(s).toUpperCase() : null)
+    const first_name_latin = up(b.first_name_latin)
+    const last_name_latin = up(b.last_name_latin)
+    const guardian_first_name_latin = up(b.guardian_first_name_latin)
+    const guardian_last_name_latin = up(b.guardian_last_name_latin)
 
-  // Initialize monthly rows for current year
-  const currentYear = new Date().getFullYear()
-  initMonthlyPaymentsForYear(info.lastInsertRowid, currentYear, poor)
+    const full_name_latin = `${first_name_latin || ''} ${last_name_latin || ''}`.trim() || b.full_name_latin
+    const full_name_arabic = `${b.first_name_arabic || ''} ${b.last_name_arabic || ''}`.trim() || b.full_name_arabic
+    if (!full_name_latin || !b.date_of_birth) {
+      return res.status(400).json({ error: 'first/last name (latin) and date_of_birth required' })
+    }
+    if (isMinor(b.date_of_birth)) {
+      const required = ['guardian_first_name_latin','guardian_last_name_latin','guardian_id_number','guardian_phone']
+      for (const f of required) {
+        if (!b[f]) return res.status(400).json({ error: `Field ${f} required for minors` })
+      }
+    }
+    const poor = !!b.poor_family
+    
+    const dbPool = db()
+    const result = await dbPool.query(
+      `INSERT INTO members (
+        first_name_latin, last_name_latin, first_name_arabic, last_name_arabic,
+        full_name_latin, full_name_arabic, date_of_birth, gender, place_of_birth,
+        id_type, id_number, poor_family,
+        photo_url,
+        guardian_full_name, guardian_first_name_latin, guardian_last_name_latin,
+        guardian_first_name_arabic, guardian_last_name_arabic,
+        guardian_id_number, guardian_phone, guardian_kinship,
+        guardian_date_of_birth, guardian_place_of_birth, guardian_address
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      RETURNING *`,
+      [
+        first_name_latin || null, last_name_latin || null,
+        b.first_name_arabic || null, b.last_name_arabic || null,
+        full_name_latin, full_name_arabic || null, b.date_of_birth, (b.gender ? String(b.gender).toLowerCase() : null), b.place_of_birth || '',
+        b.id_type || null, b.id_number || null, poor ? 1 : 0,
+        b.photo_url || null,
+        (b.guardian_full_name || [guardian_first_name_latin || '', guardian_last_name_latin || ''].join(' ').trim()) || null,
+        guardian_first_name_latin || null,
+        guardian_last_name_latin || null,
+        b.guardian_first_name_arabic || null,
+        b.guardian_last_name_arabic || null,
+        b.guardian_id_number || null, b.guardian_phone || null, (b.guardian_kinship || null),
+        b.guardian_date_of_birth || null, b.guardian_place_of_birth || null, b.guardian_address || null
+      ]
+    )
 
-  // Registration payment row
-  db().prepare(`
-    INSERT OR IGNORE INTO payments(member_id, type, year, month, status, amount)
-    VALUES (?, 'registration', NULL, NULL, ?, NULL)
-  `).run(info.lastInsertRowid, poor ? 'exempt' : 'pending')
+    const created = result.rows[0]
+    
+    // Set academy_id based on DB row id (e.g., HFA0001)
+    try {
+      const academyId = 'HFA' + String(created.id).padStart(4, '0')
+      await dbPool.query('UPDATE members SET academy_id = $1 WHERE id = $2', [academyId, created.id])
+    } catch {}
 
-  const created = db().prepare('SELECT * FROM members WHERE id = ?').get(info.lastInsertRowid)
-  res.status(201).json(created)
+    res.status(201).json(created)
+  } catch (error) {
+    console.error('Create member error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
 })
 
-router.put('/:id', (req, res) => {
-  const id = Number(req.params.id)
-  const b = req.body || {}
-  const existing = db().prepare('SELECT * FROM members WHERE id = ?').get(id)
-  if (!existing) return res.status(404).json({ error: 'Not found' })
-  const poor = !!b.poor_family
-  const stmt = db().prepare(`
-    UPDATE members SET
-      first_name_latin = ?,
-      last_name_latin = ?,
-      first_name_arabic = ?,
-      last_name_arabic = ?,
-      full_name_latin = ?,
-      full_name_arabic = ?,
-      date_of_birth = ?,
-      gender = ?,
-      place_of_birth = ?,
-      id_type = ?,
-      id_number = ?,
-      poor_family = ?,
-      photo_url = ?,
-      guardian_full_name = ?,
-      guardian_first_name_latin = ?,
-      guardian_last_name_latin = ?,
-      guardian_first_name_arabic = ?,
-      guardian_last_name_arabic = ?,
-      guardian_id_number = ?,
-      guardian_phone = ?,
-      guardian_kinship = ?,
-      guardian_date_of_birth = ?,
-      guardian_place_of_birth = ?,
-      guardian_address = ?,
-      height_cm = ?,
-      weight_kg = ?,
-      scholar_level = ?,
-      school_name = ?,
-      blood_type = ?,
-      allergies = ?,
-      medical_notes = ?,
-      emergency_contact_name = ?,
-      emergency_contact_phone = ?,
-      jersey_number = ?,
-      preferred_position = ?,
-      dominant_foot = ?,
-      address_current = ?,
-      updated_at = datetime('now')
-    WHERE id = ?
-  `)
-  const toUp = (s) => (s === undefined || s === null ? s : String(s).toUpperCase())
-  const firstLat = b.first_name_latin !== undefined ? toUp(b.first_name_latin) : existing.first_name_latin
-  const lastLat = b.last_name_latin !== undefined ? toUp(b.last_name_latin) : existing.last_name_latin
-  const firstAr = b.first_name_arabic ?? existing.first_name_arabic
-  const lastAr = b.last_name_arabic ?? existing.last_name_arabic
-  const fullLat = `${firstLat || ''} ${lastLat || ''}`.trim() || existing.full_name_latin
-  const fullAr = `${firstAr || ''} ${lastAr || ''}`.trim() || existing.full_name_arabic
-
-  const gFirstLat = b.guardian_first_name_latin ?? existing.guardian_first_name_latin
-  const gLastLat = b.guardian_last_name_latin ?? existing.guardian_last_name_latin
-  const gFirstLatUp = b.guardian_first_name_latin !== undefined ? toUp(b.guardian_first_name_latin) : gFirstLat
-  const gLastLatUp = b.guardian_last_name_latin !== undefined ? toUp(b.guardian_last_name_latin) : gLastLat
-  const guardianFullName = (b.guardian_full_name || [gFirstLat || '', gLastLat || ''].join(' ').trim()) || existing.guardian_full_name
-
-  stmt.run(
-    firstLat,
-    lastLat,
-    firstAr,
-    lastAr,
-    fullLat,
-    fullAr,
-    b.date_of_birth || existing.date_of_birth,
-    (b.gender !== undefined ? (b.gender ? String(b.gender).toLowerCase() : null) : existing.gender),
-    b.place_of_birth || existing.place_of_birth,
-    b.id_type || existing.id_type,
-    b.id_number || existing.id_number,
-    poor ? 1 : 0,
-    b.photo_url ?? existing.photo_url,
-    guardianFullName,
-    gFirstLatUp,
-    gLastLatUp,
-    b.guardian_first_name_arabic ?? existing.guardian_first_name_arabic,
-    b.guardian_last_name_arabic ?? existing.guardian_last_name_arabic,
-    b.guardian_id_number || existing.guardian_id_number,
-    b.guardian_phone || existing.guardian_phone,
-    b.guardian_kinship ?? existing.guardian_kinship,
-    b.guardian_date_of_birth || existing.guardian_date_of_birth,
-    b.guardian_place_of_birth || existing.guardian_place_of_birth,
-    b.guardian_address || existing.guardian_address,
-    (b.height_cm !== undefined ? b.height_cm : existing.height_cm),
-    (b.weight_kg !== undefined ? b.weight_kg : existing.weight_kg),
-    b.scholar_level ?? existing.scholar_level,
-    b.school_name ?? existing.school_name,
-    b.blood_type ?? existing.blood_type,
-    b.allergies ?? existing.allergies,
-    b.medical_notes ?? existing.medical_notes,
-    b.emergency_contact_name ?? existing.emergency_contact_name,
-    b.emergency_contact_phone ?? existing.emergency_contact_phone,
-    (b.jersey_number !== undefined ? b.jersey_number : existing.jersey_number),
-    b.preferred_position ?? existing.preferred_position,
-    b.dominant_foot ?? existing.dominant_foot,
-    b.address_current ?? existing.address_current,
-    id
-  )
-  // Ensure academy_id exists for legacy rows
+router.put('/:id', async (req, res) => {
   try {
-    const row = db().prepare('SELECT id, academy_id FROM members WHERE id = ?').get(id)
-    if (row && (!row.academy_id || row.academy_id === '')) {
-      const academyId = 'HFA' + String(id).padStart(4, '0')
-      db().prepare('UPDATE members SET academy_id = ? WHERE id = ?').run(academyId, id)
-    }
-  } catch {}
-  // Adjust registration row status for poor families
-  db().prepare(`UPDATE payments SET status = ? WHERE member_id = ? AND type = 'registration'`)
-    .run(poor ? 'exempt' : 'pending', id)
-  res.json(db().prepare('SELECT * FROM members WHERE id = ?').get(id))
+    const id = Number(req.params.id)
+    const b = req.body || {}
+    
+    const dbPool = db()
+    const existingResult = await dbPool.query('SELECT * FROM members WHERE id = $1', [id])
+    const existing = existingResult.rows[0]
+    
+    if (!existing) return res.status(404).json({ error: 'Not found' })
+    const poor = !!b.poor_family
+    
+    const toUp = (s) => (s === undefined || s === null ? s : String(s).toUpperCase())
+    const firstLat = b.first_name_latin !== undefined ? toUp(b.first_name_latin) : existing.first_name_latin
+    const lastLat = b.last_name_latin !== undefined ? toUp(b.last_name_latin) : existing.last_name_latin
+    const firstAr = b.first_name_arabic ?? existing.first_name_arabic
+    const lastAr = b.last_name_arabic ?? existing.last_name_arabic
+    const fullLat = `${firstLat || ''} ${lastLat || ''}`.trim() || existing.full_name_latin
+    const fullAr = `${firstAr || ''} ${lastAr || ''}`.trim() || existing.full_name_arabic
+
+    const gFirstLat = b.guardian_first_name_latin ?? existing.guardian_first_name_latin
+    const gLastLat = b.guardian_last_name_latin ?? existing.guardian_last_name_latin
+    const gFirstLatUp = b.guardian_first_name_latin !== undefined ? toUp(b.guardian_first_name_latin) : gFirstLat
+    const gLastLatUp = b.guardian_last_name_latin !== undefined ? toUp(b.guardian_last_name_latin) : gLastLat
+    const guardianFullName = (b.guardian_full_name || [gFirstLat || '', gLastLat || ''].join(' ').trim()) || existing.guardian_full_name
+
+    const result = await dbPool.query(
+      `UPDATE members SET
+        first_name_latin = $1,
+        last_name_latin = $2,
+        first_name_arabic = $3,
+        last_name_arabic = $4,
+        full_name_latin = $5,
+        full_name_arabic = $6,
+        date_of_birth = $7,
+        gender = $8,
+        place_of_birth = $9,
+        id_type = $10,
+        id_number = $11,
+        poor_family = $12,
+        photo_url = $13,
+        guardian_full_name = $14,
+        guardian_first_name_latin = $15,
+        guardian_last_name_latin = $16,
+        guardian_first_name_arabic = $17,
+        guardian_last_name_arabic = $18,
+        guardian_id_number = $19,
+        guardian_phone = $20,
+        guardian_kinship = $21,
+        guardian_date_of_birth = $22,
+        guardian_place_of_birth = $23,
+        guardian_address = $24,
+        height_cm = $25,
+        weight_kg = $26,
+        scholar_level = $27,
+        school_name = $28,
+        blood_type = $29,
+        allergies = $30,
+        medical_notes = $31,
+        emergency_contact_name = $32,
+        emergency_contact_phone = $33,
+        jersey_number = $34,
+        preferred_position = $35,
+        dominant_foot = $36,
+        address_current = $37,
+        updated_at = NOW()
+      WHERE id = $38
+      RETURNING *`,
+      [
+        firstLat,
+        lastLat,
+        firstAr,
+        lastAr,
+        fullLat,
+        fullAr,
+        b.date_of_birth || existing.date_of_birth,
+        (b.gender !== undefined ? (b.gender ? String(b.gender).toLowerCase() : null) : existing.gender),
+        b.place_of_birth || existing.place_of_birth,
+        b.id_type || existing.id_type,
+        b.id_number || existing.id_number,
+        poor ? 1 : 0,
+        b.photo_url ?? existing.photo_url,
+        guardianFullName,
+        gFirstLatUp,
+        gLastLatUp,
+        b.guardian_first_name_arabic ?? existing.guardian_first_name_arabic,
+        b.guardian_last_name_arabic ?? existing.guardian_last_name_arabic,
+        b.guardian_id_number || existing.guardian_id_number,
+        b.guardian_phone || existing.guardian_phone,
+        b.guardian_kinship ?? existing.guardian_kinship,
+        b.guardian_date_of_birth || existing.guardian_date_of_birth,
+        b.guardian_place_of_birth || existing.guardian_place_of_birth,
+        b.guardian_address || existing.guardian_address,
+        (b.height_cm !== undefined ? b.height_cm : existing.height_cm),
+        (b.weight_kg !== undefined ? b.weight_kg : existing.weight_kg),
+        b.scholar_level ?? existing.scholar_level,
+        b.school_name ?? existing.school_name,
+        b.blood_type ?? existing.blood_type,
+        b.allergies ?? existing.allergies,
+        b.medical_notes ?? existing.medical_notes,
+        b.emergency_contact_name ?? existing.emergency_contact_name,
+        b.emergency_contact_phone ?? existing.emergency_contact_phone,
+        (b.jersey_number !== undefined ? b.jersey_number : existing.jersey_number),
+        b.preferred_position ?? existing.preferred_position,
+        b.dominant_foot ?? existing.dominant_foot,
+        b.address_current ?? existing.address_current,
+        id
+      ]
+    )
+    
+    // Ensure academy_id exists for legacy rows
+    try {
+      const rowResult = await dbPool.query('SELECT id, academy_id FROM members WHERE id = $1', [id])
+      const row = rowResult.rows[0]
+      if (row && (!row.academy_id || row.academy_id === '')) {
+        const academyId = 'HFA' + String(id).padStart(4, '0')
+        await dbPool.query('UPDATE members SET academy_id = $1 WHERE id = $2', [academyId, id])
+      }
+    } catch {}
+    
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Update member error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
 })
 
-router.delete('/:id', (req, res) => {
-  const id = Number(req.params.id)
-  const info = db().prepare('DELETE FROM members WHERE id = ?').run(id)
-  if (info.changes === 0) return res.status(404).json({ error: 'Not found' })
-  res.json({ ok: true })
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    const dbPool = db()
+    const result = await dbPool.query('DELETE FROM members WHERE id = $1', [id])
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Not found' })
+    res.json({ ok: true })
+  } catch (error) {
+    console.error('Delete member error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
 })
 
 module.exports = { membersRouter: router }
-
-

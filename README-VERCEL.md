@@ -1,0 +1,65 @@
+# Deploying to Vercel
+
+This document provides instructions for deploying the Hefti Academy server to Vercel.
+
+## Prerequisites
+
+1. A Vercel account
+2. The Vercel CLI installed (`npm install -g vercel`)
+3. A PostgreSQL database (see [README-POSTGRES.md](README-POSTGRES.md) for setup instructions)
+
+## Deployment Steps
+
+1. **Set up environment variables in Vercel dashboard:**
+   - `DATABASE_URL` - PostgreSQL connection string
+   - `JWT_SECRET` - A random string for JWT token signing
+   - `CORS_ORIGIN` - Your frontend URL (e.g., https://your-app.vercel.app)
+   - `ADMIN_USERNAME` - Default admin username (optional)
+   - `ADMIN_PASSWORD_HASH` - Hashed password for admin (optional)
+
+2. **Deploy using Vercel CLI:**
+   ```bash
+   vercel --prod
+   ```
+
+3. **Or deploy using Git integration:**
+   - Connect your Git repository to Vercel
+   - Set the root directory to `server`
+   - Set the build command to `npm install` (if needed)
+   - Set the output directory to ` ` (empty)
+
+## Important Notes
+
+1. **Database**: The application now uses PostgreSQL instead of SQLite for better compatibility with Vercel.
+
+2. **File Uploads**: Uploaded files will be stored in `/tmp/uploads` directory in Vercel deployments.
+
+3. **PDF Generation**: PDF generation is disabled in Vercel environments due to Puppeteer limitations.
+
+4. **Health Checks**: You can check the health of your deployment at `/api/health`.
+
+## Troubleshooting
+
+1. **Check environment variables**: Visit `/api/env` to see which environment variables are set.
+
+2. **Test database connection**: Visit `/api/test/db-test` to test the database connection.
+
+3. **Check logs**: Use the Vercel dashboard to check deployment and runtime logs.
+
+## Limitations in Vercel Environment
+
+1. **File System**: Only the `/tmp` directory is writable.
+2. **Long-running processes**: Functions have a maximum execution time.
+3. **PDF Generation**: Puppeteer is not available in Vercel serverless functions.
+
+## Migration from SQLite to PostgreSQL
+
+If you were previously using SQLite:
+
+1. Export your data from SQLite
+2. Set up a PostgreSQL database
+3. Update your environment variables to use PostgreSQL
+4. Deploy the updated application
+5. Import your data to PostgreSQL
+
+See [README-POSTGRES.md](README-POSTGRES.md) for detailed PostgreSQL setup instructions.

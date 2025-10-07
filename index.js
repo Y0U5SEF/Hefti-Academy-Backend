@@ -5,18 +5,28 @@ const express = require('express')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const path = require('path')
-const { initDb, db } = require('./lib/db')
+const { initDb, setupDatabase } = require('./lib/db-postgres') // Use PostgreSQL
 const fs = require('fs')
 const { authRouter } = require('./routes/auth')
 const { membersRouter } = require('./routes/members')
 const { paymentsRouter } = require('./routes/payments')
 const { adminRouter } = require('./routes/admin')
+const { testRouter } = require('./routes/test')
 
 const PORT = process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 4000
 const ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000'
 
 // Initialize the database
-initDb()
+let dbPool;
+try {
+  dbPool = initDb()
+  // Setup database tables
+  setupDatabase().catch(error => {
+    console.error('Database setup error:', error)
+  })
+} catch (error) {
+  console.error('Failed to initialize database:', error)
+}
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -28,13 +38,53 @@ app.use(
   })
 )
 
-// Static uploads
-const uploadsDir = path.join(__dirname, 'data', 'uploads')
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+// Static uploads - use /tmp for Vercel
+const isVercel = !!process.env.VERCEL
+const uploadsDir = isVercel 
+  ? path.join('/tmp', 'uploads') 
+  : path.join(__dirname, 'data', 'uploads')
+  
+if (!fs.existsSync(uploadsDir)) {
+  try {
+    fs.mkdirSync(uploadsDir, { recursive: true })
+  } catch (error) {
+    console.error('Failed to create uploads directory:', error)
+  }
+}
 app.use('/uploads', express.static(uploadsDir))
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString() })
+  try {
+    res.json({ 
+      ok: true, 
+      ts: new Date().toISOString(),
+      isVercel: !!process.env.VERCEL,
+      environment: process.env.NODE_ENV || 'development',
+      database: 'PostgreSQL'
+    })
+  } catch (error) {
+    console.error('Health check failed:', error)
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message,
+      isVercel: !!process.env.VERCEL
+    })
+  }
+})
+
+app.get('/api/env', (req, res) => {
+  // Return environment info (without sensitive values)
+  const envInfo = {
+    isVercel: !!process.env.VERCEL,
+    nodeEnv: process.env.NODE_ENV,
+    serverPort: process.env.SERVER_PORT,
+    corsOrigin: process.env.CORS_ORIGIN,
+    hasJwtSecret: !!process.env.JWT_SECRET,
+    hasAdminEmail: !!process.env.ADMIN_EMAIL,
+    hasAdminUsername: !!process.env.ADMIN_USERNAME,
+    hasDatabaseUrl: !!process.env.DATABASE_URL
+  }
+  res.json(envInfo)
 })
 
 app.use('/api/auth', authRouter)
@@ -47,6 +97,8 @@ if ((process.env.ENABLE_PUBLIC_MEMBER_CARD || 'false').toLowerCase() === 'true')
 }
 app.use('/api/payments', paymentsRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/test', testRouter)
+
 app.post('/api/files/upload-base64', (req, res) => {
   try {
     const { dataUrl, filenameHint } = req.body || {}
@@ -60,6 +112,12 @@ app.post('/api/files/upload-base64', (req, res) => {
     const ts = Date.now()
     const name = `${safeName}-${ts}.${ext}`
     const filePath = path.join(uploadsDir, name)
+    
+    // Ensure directory exists before writing
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+    
     fs.writeFileSync(filePath, buf)
     res.json({ url: `/uploads/${name}` })
   } catch (e) {
