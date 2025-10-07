@@ -33,7 +33,7 @@ This document summarizes all the changes made to make the Hefti Academy server c
 ### 4. Vercel Configuration Fix
 - Removed conflicting `functions` property from vercel.json
 - Kept only the necessary `builds` property
-- Added environment variable references
+- Removed environment variable references (should be set in Vercel dashboard)
 
 ## Route Updates
 
@@ -88,7 +88,7 @@ This document summarizes all the changes made to make the Hefti Academy server c
 ### 2. Vercel Configuration ([vercel.json](file://c:\hefti-academy\server\vercel.json))
 - Updated configuration for PostgreSQL deployment
 - Fixed conflicting properties issue
-- Added environment variable references
+- Removed environment variable references
 
 ## New Files Created
 
@@ -132,3 +132,9 @@ Fixed the error "The `functions` property cannot be used in conjunction with the
 - Removing the conflicting `functions` property from vercel.json
 - Keeping only the necessary `builds` property
 - This ensures compatibility with Vercel's current deployment requirements
+
+### Environment Variable Reference Issue
+Fixed the error "Environment Variable "DATABASE_URL" references Secret "database_url", which does not exist" by:
+- Removing environment variable references from vercel.json
+- Environment variables should now be set directly in the Vercel dashboard
+- This is the recommended approach for managing secrets in Vercel

@@ -68,5 +68,5 @@ See [README-POSTGRES.md](README-POSTGRES.md) for detailed PostgreSQL setup instr
 
 The vercel.json file has been updated to be compatible with Vercel's current requirements:
 - Removed the conflicting `functions` property
+- Removed environment variable references (should be set in Vercel dashboard)
 - Kept only the necessary `builds` property
-- Added environment variable references
