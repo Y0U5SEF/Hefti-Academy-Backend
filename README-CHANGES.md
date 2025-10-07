@@ -30,6 +30,11 @@ This document summarizes all the changes made to make the Hefti Academy server c
 - Added checks for Vercel environment using `process.env.VERCEL`
 - Conditional logic based on deployment environment
 
+### 4. Vercel Configuration Fix
+- Removed conflicting `functions` property from vercel.json
+- Kept only the necessary `builds` property
+- Added environment variable references
+
 ## Route Updates
 
 ### 1. Auth Route ([routes/auth.js](file://c:\hefti-academy\server\routes\auth.js))
@@ -82,6 +87,7 @@ This document summarizes all the changes made to make the Hefti Academy server c
 
 ### 2. Vercel Configuration ([vercel.json](file://c:\hefti-academy\server\vercel.json))
 - Updated configuration for PostgreSQL deployment
+- Fixed conflicting properties issue
 - Added environment variable references
 
 ## New Files Created
@@ -118,3 +124,11 @@ If you were using the previous SQLite version:
 3. Update environment variables
 4. Deploy the new version
 5. Import your data to PostgreSQL
+
+## Recent Fixes
+
+### Vercel Configuration Issue
+Fixed the error "The `functions` property cannot be used in conjunction with the `builds` property" by:
+- Removing the conflicting `functions` property from vercel.json
+- Keeping only the necessary `builds` property
+- This ensures compatibility with Vercel's current deployment requirements

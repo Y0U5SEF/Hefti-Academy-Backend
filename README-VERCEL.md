@@ -63,3 +63,10 @@ If you were previously using SQLite:
 5. Import your data to PostgreSQL
 
 See [README-POSTGRES.md](README-POSTGRES.md) for detailed PostgreSQL setup instructions.
+
+## Configuration
+
+The vercel.json file has been updated to be compatible with Vercel's current requirements:
+- Removed the conflicting `functions` property
+- Kept only the necessary `builds` property
+- Added environment variable references

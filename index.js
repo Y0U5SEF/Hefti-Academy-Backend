@@ -20,7 +20,7 @@ const ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000'
 let dbPool;
 try {
   dbPool = initDb()
-  // Setup database tables
+  // Setup database tables asynchronously
   setupDatabase().catch(error => {
     console.error('Database setup error:', error)
   })

@@ -12,14 +12,13 @@ router.get('/db-test', async (req, res) => {
     }
     
     // Test a simple query
-    const result = await dbPool.query('SELECT 1 as test')
+    const result = await dbPool.query('SELECT NOW() as current_time')
     
     res.json({ 
       ok: true, 
       message: 'Database connection successful',
-      testResult: result.rows[0],
-      isVercel: !!process.env.VERCEL,
-      dataDir: process.env.VERCEL ? '/tmp/data' : 'local data directory'
+      currentTime: result.rows[0].current_time,
+      isVercel: !!process.env.VERCEL
     })
   } catch (error) {
     console.error('Database test failed:', error)

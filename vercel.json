@@ -3,15 +3,7 @@
   "builds": [
     {
       "src": "index.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "data/**",
-          "lib/**",
-          "routes/**",
-          "scripts/**"
-        ]
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -20,12 +12,6 @@
       "dest": "index.js"
     }
   ],
-  "functions": {
-    "index.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
   "env": {
     "DATABASE_URL": "@database_url"
   }
