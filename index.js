@@ -12,9 +12,13 @@ const { membersRouter } = require('./routes/members')
 const { paymentsRouter } = require('./routes/payments')
 const { adminRouter } = require('./routes/admin')
 const { testRouter } = require('./routes/test')
+const { contactRouter } = require('./routes/contact')
 
 const PORT = process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 4000
-const ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000'
+// Support one or more allowed origins (comma-separated)
+const ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map(s => s.trim())
 
 // Initialize the database
 let dbPool;
@@ -33,7 +37,7 @@ app.use(express.json({ limit: '2mb' }))
 app.use(cookieParser())
 app.use(
   cors({
-    origin: ORIGIN,
+    origin: ORIGINS,
     credentials: true,
   })
 )
@@ -150,6 +154,7 @@ if ((process.env.ENABLE_PUBLIC_MEMBER_CARD || 'false').toLowerCase() === 'true')
 app.use('/api/payments', paymentsRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/test', testRouter)
+app.use('/api/contact', contactRouter)
 
 app.post('/api/files/upload-base64', (req, res) => {
   try {
