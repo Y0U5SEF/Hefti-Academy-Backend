@@ -1,5 +1,5 @@
 ﻿﻿const express = require('express')
-const { db } = require('../lib/db-postgres') // Use PostgreSQL
+const { db, nextId } = require('../lib/db-mongo') // Use MongoDB
 const { generateMemberPdf } = require('../lib/memberPdf')
 const path = require('path')
 const fs = require('fs')
@@ -28,10 +28,9 @@ router.get('/card/:academyId', (req, res) => {
     const academyId = String(req.params.academyId || '').trim()
     if (!academyId) return res.status(400).send('Invalid academy id')
 
-    // Use PostgreSQL query
-    db().query('SELECT * FROM members WHERE academy_id = $1', [academyId])
-      .then(result => {
-        const row = result.rows[0]
+    // MongoDB query
+    db().collection('members').findOne({ academy_id: academyId })
+      .then(row => {
         if (!row) return res.status(404).send('Not found')
 
         // Helpers to embed local files as data URL
@@ -334,9 +333,9 @@ router.use(authRequired)
 
 router.get('/', async (req, res) => {
   try {
-    const dbPool = db()
-    const result = await dbPool.query('SELECT * FROM members ORDER BY created_at DESC')
-    res.json(result.rows)
+    const col = db().collection('members')
+    const rows = await col.find({}).sort({ created_at: -1 }).toArray()
+    res.json(rows)
   } catch (error) {
     console.error('Get members error:', error)
     res.status(500).json({ error: 'Internal server error' })
@@ -345,9 +344,8 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const dbPool = db()
-    const result = await dbPool.query('SELECT * FROM members WHERE id = $1', [req.params.id])
-    const row = result.rows[0]
+    const col = db().collection('members')
+    const row = await col.findOne({ id: Number(req.params.id) })
     if (!row) return res.status(404).json({ error: 'Not found' })
     res.json(row)
   } catch (error) {
@@ -368,9 +366,8 @@ router.get('/:id/pdf', async (req, res) => {
     const id = Number(req.params.id)
     if (!id) return res.status(400).json({ error: 'Invalid id' })
     
-    const dbPool = db()
-    const result = await dbPool.query('SELECT * FROM members WHERE id = $1', [id])
-    const member = result.rows[0]
+    const col = db().collection('members')
+    const member = await col.findOne({ id })
     
     if (!member) return res.status(404).json({ error: 'Not found' })
 
@@ -408,44 +405,41 @@ router.post('/', async (req, res) => {
     }
     const poor = !!b.poor_family
     
-    const dbPool = db()
-    const result = await dbPool.query(
-      `INSERT INTO members (
-        first_name_latin, last_name_latin, first_name_arabic, last_name_arabic,
-        full_name_latin, full_name_arabic, date_of_birth, gender, place_of_birth,
-        id_type, id_number, poor_family,
-        photo_url,
-        guardian_full_name, guardian_first_name_latin, guardian_last_name_latin,
-        guardian_first_name_arabic, guardian_last_name_arabic,
-        guardian_id_number, guardian_phone, guardian_kinship,
-        guardian_date_of_birth, guardian_place_of_birth, guardian_address
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
-      RETURNING *`,
-      [
-        first_name_latin || null, last_name_latin || null,
-        b.first_name_arabic || null, b.last_name_arabic || null,
-        full_name_latin, full_name_arabic || null, b.date_of_birth, (b.gender ? String(b.gender).toLowerCase() : null), b.place_of_birth || '',
-        b.id_type || null, b.id_number || null, poor ? 1 : 0,
-        b.photo_url || null,
-        (b.guardian_full_name || [guardian_first_name_latin || '', guardian_last_name_latin || ''].join(' ').trim()) || null,
-        guardian_first_name_latin || null,
-        guardian_last_name_latin || null,
-        b.guardian_first_name_arabic || null,
-        b.guardian_last_name_arabic || null,
-        b.guardian_id_number || null, b.guardian_phone || null, (b.guardian_kinship || null),
-        b.guardian_date_of_birth || null, b.guardian_place_of_birth || null, b.guardian_address || null
-      ]
-    )
-
-    const created = result.rows[0]
-    
-    // Set academy_id based on DB row id (e.g., HFA0001)
-    try {
-      const academyId = 'HFA' + String(created.id).padStart(4, '0')
-      await dbPool.query('UPDATE members SET academy_id = $1 WHERE id = $2', [academyId, created.id])
-    } catch {}
-
-    res.status(201).json(created)
+    const col = db().collection('members')
+    const id = await nextId('members')
+    const academyId = 'HFA' + String(id).padStart(4, '0')
+    const doc = {
+      id,
+      academy_id: academyId,
+      first_name_latin: first_name_latin || null,
+      last_name_latin: last_name_latin || null,
+      first_name_arabic: b.first_name_arabic || null,
+      last_name_arabic: b.last_name_arabic || null,
+      full_name_latin,
+      full_name_arabic: full_name_arabic || null,
+      date_of_birth: b.date_of_birth,
+      gender: b.gender ? String(b.gender).toLowerCase() : null,
+      place_of_birth: b.place_of_birth || '',
+      id_type: b.id_type || null,
+      id_number: b.id_number || null,
+      poor_family: poor ? 1 : 0,
+      photo_url: b.photo_url || null,
+      guardian_full_name: (b.guardian_full_name || [guardian_first_name_latin || '', guardian_last_name_latin || ''].join(' ').trim()) || null,
+      guardian_first_name_latin: guardian_first_name_latin || null,
+      guardian_last_name_latin: guardian_last_name_latin || null,
+      guardian_first_name_arabic: b.guardian_first_name_arabic || null,
+      guardian_last_name_arabic: b.guardian_last_name_arabic || null,
+      guardian_id_number: b.guardian_id_number || null,
+      guardian_phone: b.guardian_phone || null,
+      guardian_kinship: b.guardian_kinship || null,
+      guardian_date_of_birth: b.guardian_date_of_birth || null,
+      guardian_place_of_birth: b.guardian_place_of_birth || null,
+      guardian_address: b.guardian_address || null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }
+    await col.insertOne(doc)
+    res.status(201).json(doc)
   } catch (error) {
     console.error('Create member error:', error)
     res.status(500).json({ error: 'Internal server error' })
@@ -457,9 +451,8 @@ router.put('/:id', async (req, res) => {
     const id = Number(req.params.id)
     const b = req.body || {}
     
-    const dbPool = db()
-    const existingResult = await dbPool.query('SELECT * FROM members WHERE id = $1', [id])
-    const existing = existingResult.rows[0]
+    const col = db().collection('members')
+    const existing = await col.findOne({ id })
     
     if (!existing) return res.status(404).json({ error: 'Not found' })
     const poor = !!b.poor_family
@@ -478,101 +471,63 @@ router.put('/:id', async (req, res) => {
     const gLastLatUp = b.guardian_last_name_latin !== undefined ? toUp(b.guardian_last_name_latin) : gLastLat
     const guardianFullName = (b.guardian_full_name || [gFirstLat || '', gLastLat || ''].join(' ').trim()) || existing.guardian_full_name
 
-    const result = await dbPool.query(
-      `UPDATE members SET
-        first_name_latin = $1,
-        last_name_latin = $2,
-        first_name_arabic = $3,
-        last_name_arabic = $4,
-        full_name_latin = $5,
-        full_name_arabic = $6,
-        date_of_birth = $7,
-        gender = $8,
-        place_of_birth = $9,
-        id_type = $10,
-        id_number = $11,
-        poor_family = $12,
-        photo_url = $13,
-        guardian_full_name = $14,
-        guardian_first_name_latin = $15,
-        guardian_last_name_latin = $16,
-        guardian_first_name_arabic = $17,
-        guardian_last_name_arabic = $18,
-        guardian_id_number = $19,
-        guardian_phone = $20,
-        guardian_kinship = $21,
-        guardian_date_of_birth = $22,
-        guardian_place_of_birth = $23,
-        guardian_address = $24,
-        height_cm = $25,
-        weight_kg = $26,
-        scholar_level = $27,
-        school_name = $28,
-        blood_type = $29,
-        allergies = $30,
-        medical_notes = $31,
-        emergency_contact_name = $32,
-        emergency_contact_phone = $33,
-        jersey_number = $34,
-        preferred_position = $35,
-        dominant_foot = $36,
-        address_current = $37,
-        updated_at = NOW()
-      WHERE id = $38
-      RETURNING *`,
-      [
-        firstLat,
-        lastLat,
-        firstAr,
-        lastAr,
-        fullLat,
-        fullAr,
-        b.date_of_birth || existing.date_of_birth,
-        (b.gender !== undefined ? (b.gender ? String(b.gender).toLowerCase() : null) : existing.gender),
-        b.place_of_birth || existing.place_of_birth,
-        b.id_type || existing.id_type,
-        b.id_number || existing.id_number,
-        poor ? 1 : 0,
-        b.photo_url ?? existing.photo_url,
-        guardianFullName,
-        gFirstLatUp,
-        gLastLatUp,
-        b.guardian_first_name_arabic ?? existing.guardian_first_name_arabic,
-        b.guardian_last_name_arabic ?? existing.guardian_last_name_arabic,
-        b.guardian_id_number || existing.guardian_id_number,
-        b.guardian_phone || existing.guardian_phone,
-        b.guardian_kinship ?? existing.guardian_kinship,
-        b.guardian_date_of_birth || existing.guardian_date_of_birth,
-        b.guardian_place_of_birth || existing.guardian_place_of_birth,
-        b.guardian_address || existing.guardian_address,
-        (b.height_cm !== undefined ? b.height_cm : existing.height_cm),
-        (b.weight_kg !== undefined ? b.weight_kg : existing.weight_kg),
-        b.scholar_level ?? existing.scholar_level,
-        b.school_name ?? existing.school_name,
-        b.blood_type ?? existing.blood_type,
-        b.allergies ?? existing.allergies,
-        b.medical_notes ?? existing.medical_notes,
-        b.emergency_contact_name ?? existing.emergency_contact_name,
-        b.emergency_contact_phone ?? existing.emergency_contact_phone,
-        (b.jersey_number !== undefined ? b.jersey_number : existing.jersey_number),
-        b.preferred_position ?? existing.preferred_position,
-        b.dominant_foot ?? existing.dominant_foot,
-        b.address_current ?? existing.address_current,
-        id
-      ]
+    await col.updateOne(
+      { id },
+      {
+        $set: {
+          first_name_latin: firstLat,
+          last_name_latin: lastLat,
+          first_name_arabic: firstAr,
+          last_name_arabic: lastAr,
+          full_name_latin: fullLat,
+          full_name_arabic: fullAr,
+          date_of_birth: b.date_of_birth || existing.date_of_birth,
+          gender: b.gender !== undefined ? (b.gender ? String(b.gender).toLowerCase() : null) : existing.gender,
+          place_of_birth: b.place_of_birth || existing.place_of_birth,
+          id_type: b.id_type || existing.id_type,
+          id_number: b.id_number || existing.id_number,
+          poor_family: poor ? 1 : 0,
+          photo_url: b.photo_url ?? existing.photo_url,
+          guardian_full_name: guardianFullName,
+          guardian_first_name_latin: gFirstLatUp,
+          guardian_last_name_latin: gLastLatUp,
+          guardian_first_name_arabic: b.guardian_first_name_arabic ?? existing.guardian_first_name_arabic,
+          guardian_last_name_arabic: b.guardian_last_name_arabic ?? existing.guardian_last_name_arabic,
+          guardian_id_number: b.guardian_id_number || existing.guardian_id_number,
+          guardian_phone: b.guardian_phone || existing.guardian_phone,
+          guardian_kinship: b.guardian_kinship ?? existing.guardian_kinship,
+          guardian_date_of_birth: b.guardian_date_of_birth || existing.guardian_date_of_birth,
+          guardian_place_of_birth: b.guardian_place_of_birth || existing.guardian_place_of_birth,
+          guardian_address: b.guardian_address || existing.guardian_address,
+          height_cm: b.height_cm !== undefined ? b.height_cm : existing.height_cm,
+          weight_kg: b.weight_kg !== undefined ? b.weight_kg : existing.weight_kg,
+          scholar_level: b.scholar_level ?? existing.scholar_level,
+          school_name: b.school_name ?? existing.school_name,
+          blood_type: b.blood_type ?? existing.blood_type,
+          allergies: b.allergies ?? existing.allergies,
+          medical_notes: b.medical_notes ?? existing.medical_notes,
+          emergency_contact_name: b.emergency_contact_name ?? existing.emergency_contact_name,
+          emergency_contact_phone: b.emergency_contact_phone ?? existing.emergency_contact_phone,
+          jersey_number: b.jersey_number !== undefined ? b.jersey_number : existing.jersey_number,
+          preferred_position: b.preferred_position ?? existing.preferred_position,
+          dominant_foot: b.dominant_foot ?? existing.dominant_foot,
+          address_current: b.address_current ?? existing.address_current,
+          updated_at: new Date(),
+        },
+      }
     )
     
     // Ensure academy_id exists for legacy rows
     try {
-      const rowResult = await dbPool.query('SELECT id, academy_id FROM members WHERE id = $1', [id])
-      const row = rowResult.rows[0]
+      const row = await col.findOne({ id }, { projection: { academy_id: 1, _id: 0 } })
       if (row && (!row.academy_id || row.academy_id === '')) {
-        const academyId = 'HFA' + String(id).padStart(4, '0')
-        await dbPool.query('UPDATE members SET academy_id = $1 WHERE id = $2', [academyId, id])
+        const academyId2 = 'HFA' + String(id).padStart(4, '0')
+        await col.updateOne({ id }, { $set: { academy_id: academyId2 } })
       }
     } catch {}
-    
-    res.json(result.rows[0])
+
+    const updated = await col.findOne({ id })
+    res.json(updated)
   } catch (error) {
     console.error('Update member error:', error)
     res.status(500).json({ error: 'Internal server error' })
@@ -582,9 +537,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id)
-    const dbPool = db()
-    const result = await dbPool.query('DELETE FROM members WHERE id = $1', [id])
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Not found' })
+    const col = db().collection('members')
+    const result = await col.deleteOne({ id })
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'Not found' })
     res.json({ ok: true })
   } catch (error) {
     console.error('Delete member error:', error)

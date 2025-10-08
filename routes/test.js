@@ -1,23 +1,24 @@
 const express = require('express')
-const { db } = require('../lib/db-postgres') // Use PostgreSQL
+const { db, client } = require('../lib/db-mongo') // Use MongoDB
 
 const router = express.Router()
 
 router.get('/db-test', async (req, res) => {
   try {
     // Test database connection
-    const dbPool = db()
-    if (!dbPool) {
+    const dbc = db()
+    if (!dbc) {
       return res.status(500).json({ error: 'Database not initialized' })
     }
-    
-    // Test a simple query
-    const result = await dbPool.query('SELECT NOW() as current_time')
-    
+
+    // Test a simple command
+    await client().db(dbc.databaseName).command({ ping: 1 })
+    const currentTime = new Date().toISOString()
+
     res.json({ 
       ok: true, 
       message: 'Database connection successful',
-      currentTime: result.rows[0].current_time,
+      currentTime,
       isVercel: !!process.env.VERCEL
     })
   } catch (error) {

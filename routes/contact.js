@@ -1,7 +1,7 @@
 const express = require('express')
 const nodemailer = require('nodemailer')
 const { z } = require('zod')
-const { db } = require('../lib/db-postgres')
+const { db } = require('../lib/db-mongo')
 
 const router = express.Router()
 
@@ -46,10 +46,15 @@ router.post('/', async (req, res) => {
     // Persist to DB (best-effort)
     try {
       const pool = db()
-      await pool.query(
-        `INSERT INTO contact_messages(name, email, subject, message, language, ip_address) VALUES($1,$2,$3,$4,$5,$6)`,
-        [name, email, subject, message, language || null, req.ip || null]
-      )
+      await pool.collection('contact_messages').insertOne({
+        name,
+        email,
+        subject,
+        message,
+        language: language || null,
+        ip_address: req.ip || null,
+        created_at: new Date(),
+      })
     } catch (e) {
       // Log but don't fail the request solely because persistence failed
       console.error('Failed to persist contact message:', e)
@@ -105,4 +110,3 @@ function escapeHtml(str = '') {
 }
 
 module.exports = { contactRouter: router }
-

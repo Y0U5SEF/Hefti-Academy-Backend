@@ -5,7 +5,9 @@ This document explains the environment variables used by the Hefti Academy serve
 ## Required Environment Variables
 
 ### Database Configuration
-- `DATABASE_URL` - PostgreSQL connection string (required for PostgreSQL deployment)
+- `MONGODB_URI` - MongoDB Atlas connection string (required)
+  - Example: `MONGODB_URI=mongodb+srv://user:pass@cluster0.xxxxxx.mongodb.net/?retryWrites=true&w=majority`
+- `MONGODB_DB` - Database name (required if not present in URI)
 
 ### Security
 - `JWT_SECRET` - Secret key for JWT token signing (required)
@@ -55,7 +57,8 @@ For sensitive variables like `DATABASE_URL` and `JWT_SECRET`, mark them as "Prod
 For local development, create a `.env` file in the server directory:
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/hefti_academy
+MONGODB_URI=mongodb+srv://user:password@cluster0.xxxxxx.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB=hefti_academy
 JWT_SECRET=my-dev-secret-key-change-me
 CORS_ORIGIN=http://localhost:3000
 ADMIN_USERNAME=admin

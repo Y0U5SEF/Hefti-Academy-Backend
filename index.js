@@ -5,7 +5,7 @@ const express = require('express')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const path = require('path')
-const { initDb, setupDatabase } = require('./lib/db-postgres') // Use PostgreSQL
+const { initDb, setupDatabase } = require('./lib/db-mongo') // Use MongoDB
 const fs = require('fs')
 const { authRouter } = require('./routes/auth')
 const { membersRouter } = require('./routes/members')
@@ -24,7 +24,7 @@ const ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000')
 let dbPool;
 try {
   dbPool = initDb()
-  // Setup database tables asynchronously
+  // Setup database collections/indexes asynchronously
   setupDatabase().catch(error => {
     console.error('Database setup error:', error)
   })
@@ -116,7 +116,7 @@ app.get('/api/health', (req, res) => {
       ts: new Date().toISOString(),
       isVercel: !!process.env.VERCEL,
       environment: process.env.NODE_ENV || 'development',
-      database: 'PostgreSQL'
+      database: 'MongoDB'
     })
   } catch (error) {
     console.error('Health check failed:', error)
@@ -138,7 +138,8 @@ app.get('/api/env', (req, res) => {
     hasJwtSecret: !!process.env.JWT_SECRET,
     hasAdminEmail: !!process.env.ADMIN_EMAIL,
     hasAdminUsername: !!process.env.ADMIN_USERNAME,
-    hasDatabaseUrl: !!process.env.DATABASE_URL
+    hasMongoUri: !!process.env.MONGODB_URI,
+    mongoDbName: process.env.MONGODB_DB || null
   }
   res.json(envInfo)
 })
